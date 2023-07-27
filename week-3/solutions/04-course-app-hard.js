@@ -1,8 +1,11 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const cors=require('cors');
 const app = express();
-
+app.use(cors());
+app.use(bodyParser.json());
 app.use(express.json());
 
 const SECRET = 'SECr3t';  // This should be in an environment variable in a real application
@@ -16,7 +19,8 @@ const userSchema = new mongoose.Schema({
 
 const adminSchema = new mongoose.Schema({
   username: String,
-  password: String
+  password: String,
+  publishedbyme: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
 });
 
 const courseSchema = new mongoose.Schema({
@@ -52,6 +56,7 @@ const authenticateJwt = (req, res, next) => {
 // DONT MISUSE THIS THANKYOU!!
 mongoose.connect('mongodb+srv://kirattechnologies:iRbi4XRDdM7JMMkl@cluster0.e95bnsi.mongodb.net/courses', { useNewUrlParser: true, useUnifiedTopology: true, dbName: "courses" });
 
+
 app.post('/admin/signup', (req, res) => {
   const { username, password } = req.body;
   function callback(admin) {
@@ -70,7 +75,7 @@ app.post('/admin/signup', (req, res) => {
 });
 
 app.post('/admin/login', async (req, res) => {
-  const { username, password } = req.headers;
+  const { username, password } = req.body;
   const admin = await Admin.findOne({ username, password });
   if (admin) {
     const token = jwt.sign({ username, role: 'admin' }, SECRET, { expiresIn: '1h' });
@@ -79,7 +84,17 @@ app.post('/admin/login', async (req, res) => {
     res.status(403).json({ message: 'Invalid username or password' });
   }
 });
-
+app.get('/admin/me',authenticateJwt, async (req,res)=>{
+      res.json({username:req.user.username});
+})
+app.get('/admin/publications', authenticateJwt, async (req, res) => {
+  const user = await User.findOne({ username: req.user.username }).populate('publishedbyme');
+  if (user) {
+    res.json({ purchasedCourses: user.purchasedCourses || [] });
+  } else {
+    res.status(403).json({ message: 'User not found' });
+  }
+});
 app.post('/admin/courses', authenticateJwt, async (req, res) => {
   const course = new Course(req.body);
   await course.save();
@@ -94,7 +109,14 @@ app.put('/admin/courses/:courseId', authenticateJwt, async (req, res) => {
     res.status(404).json({ message: 'Course not found' });
   }
 });
-
+app.get('/admin/me/:courseId', authenticateJwt, async (req, res) => {
+  const course = await Course.findById(req.params.courseId);
+  if (course) {
+    res.json(course);
+  } else {
+    res.status(404).json({ message: 'Course not found' });
+  }
+});
 app.get('/admin/courses', authenticateJwt, async (req, res) => {
   const courses = await Course.find({});
   res.json({ courses });
@@ -115,7 +137,7 @@ app.post('/users/signup', async (req, res) => {
 });
 
 app.post('/users/login', async (req, res) => {
-  const { username, password } = req.headers;
+  const { username, password } = req.body;
   const user = await User.findOne({ username, password });
   if (user) {
     const token = jwt.sign({ username, role: 'user' }, SECRET, { expiresIn: '1h' });

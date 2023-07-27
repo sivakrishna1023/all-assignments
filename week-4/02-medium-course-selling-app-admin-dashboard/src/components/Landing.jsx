@@ -11,6 +11,6 @@ function Landing() {
         <br/>
         <a href="/login">Login</a>
     </div>
-}
+} 
 
 export default Landing;

@@ -10,7 +10,7 @@ import ShowCourses from './components/ShowCourses';
 // based on the route.
 // You can also try going to /random and see what happens (a route that doesnt exist)
 function App() {
-    return (
+    return ( 
         <Router>
             <Routes>
                 <Route path="/" element={<Landing />} />
